@@ -1,0 +1,179 @@
+<?php
+session_start();
+
+/*********************************************************************************************************************
+ ***  getdate.php                                                                                                 ***
+ ***  part of VH Management system                                                                                 ***
+ ***                                                                                                               ***
+ ***                                                                                                               ***
+ ***                                                                                                               ***
+ ***                                                                                                               ***
+ ***                                                                                                               ***
+ ***  George Thompson                                                                                              ***
+ *********************************************************************************************************************/
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>EMVH Access Manager</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+
+
+<?php
+
+    $role = $_SESSION["role"];
+    $username = $_SESSION["username"];
+    $id = $_SESSION["id"]; 
+    require('/home/web/scred.php');
+// Create connection
+    $conn = new mysqli($sqlservername, $sqlusername, $sqlpassword, $sqldbname);
+
+
+$url =  "//$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+//echo $url. "<br>";
+//echo $query;
+parse_str(parse_url($url)['query'], $params);
+
+                        $disday  = $params["d"];
+                        $dismon  = $params["m"];
+                        $disyear = $params["y"];
+                        $disid   = $params["id"];  
+
+        $day_event = date("Y-m-d", mktime(0,0,0,$params['m'],$params['d'],$params['y'])) . "%";
+//      echo $day_event;
+        $sql ="SELECT * FROM bookings WHERE startdate LIKE '$day_event' ORDER BY startdate";
+//      echo $sql . "<br>";
+        $result = mysqli_query($conn, $sql);
+?>
+
+</head>
+<body>
+
+<?php
+    require("head.php");
+
+?>
+<br>
+<p id="displace" class="col-sm-9 offset-sm-3"></p>
+
+<div id="mainframe" class="container-fluid">
+<div class="row">
+<div class="col-sm-3">
+  
+	 <h5>Use this page to view and edit bookings.</h5>
+	 <p>If you are not logged in, you can view the bookings on the day selected from the calendar.</p>
+         <p>If you are logged in:</p>
+  	 <ul>	
+	  <li>you will see all the booking in your name and have the ability to request changes and cancellations which are subject to approval by the Management Committee.</li>
+          <li>you are able to change whether your contact details are publically available</li>
+	</ul>
+
+</div>
+
+<div class="col-sm-9" style="font-size:16px">
+
+
+<?php 
+if ($_SESSION["loggedon"] == "yes" ){
+echo '<h2>Bookings for ' . $_SESSION["username"] . '</h2>';
+}else{
+echo "<h2>Bookings for " .  $params['d'] .  "/" . $params['m'] . "/" . $params['y'] . "</h2>";
+}
+
+
+echo '<form action="addevent.php" method="GET">';
+echo '<input type="hidden" name="id"  value="' . $disid . '">';
+echo '<input type="hidden" name="d"  value="' . $disday  . '">';
+echo '<input type="hidden" name="m"  value="' . $dismon  . '">';
+echo '<input type="hidden" name="y" value="' . $disyear  . '">';
+echo '<input type="submit" name="addevent" value="Add New Event">';
+?>
+</form>
+
+<br>
+  <div class="row">
+	<div class="col-sm-2 bg-info">Booking</div>
+        <div class="col-sm-2 bg-info">Start Time</div>
+        <div class="col-sm-2 bg-info">End Time</div>
+        <div class="col bg-info">Hall</div>
+<?php
+	if ($_SESSION["loggedon"] ==  "yes" ) {
+          echo '<div class="col bg-info">Status</div>';
+          echo '<div class="col bg-info">Recurring</div>';
+          echo '<div class="col bg-info">Public</div>';
+          echo '<div class="col bg-info">Edit</div>';
+          echo '<div class="col bg-info">Cancel</div>';
+          $sql ='SELECT * FROM bookings WHERE customer = "' . $_SESSION["username"] . '" AND startdate >="' . date("Y-m-d H:i:s") . '" AND (status = "Confirmed" OR status ="Requested" )ORDER BY startdate';
+	  }
+	else {
+        $day_event = date("Y-m-d", mktime(0,0,0,$params['m'],$params['d'],$params['y'])) . "%";
+//      echo $day_event . "%";
+        $sql ="SELECT * FROM bookings WHERE startdate LIKE '$day_event' ORDER BY startdate";
+//      echo $sql . "<br>";
+	}
+        $result = mysqli_query($conn, $sql);
+
+?>
+
+
+
+
+  </div>
+
+<br>
+
+
+<?php
+//echo mysqli_num_rows($result);
+if ($row["recurring"] == 0) {
+	$recurring = "N";
+} else {
+	$recurring = "Y";
+}
+//echo "here<br>";
+ if (mysqli_num_rows($result) > 0) {
+                   // output data of each row
+                    while($row = mysqli_fetch_assoc($result)) {
+                       echo '<div class="row">';  
+			echo '<div class="col-sm-2">' . $row["bookingname"] . '</div>';
+			echo '<div class="col-sm-2">' . $row["startdate"] . '</div>';
+			echo '<div class="col-sm-2">' . $row["enddate"] . '</div>';
+			echo '<div class="col-sm">' . substr($row["rooms"],0,5) . " " . substr($row["rooms"],12,5) . '</div>';
+			
+			if ($_SESSION["loggedon"] == "yes" ) {
+
+   			   echo '<div class="col-sm">' . $row["status"] . '</div>';
+			   echo '<div class="col-sm">' . $row["recurring"] . '</div>';
+			   echo '<div class="col-sm">' . $row["public"] . '</div>';
+			   echo '<div class="col-sm"> <a href=editevent1.php?id=' . $row["id"] . '&d=' . $params["d"] . '&m='. $params["m"] . '&y='  . $params["y"] . '>Edit</a> </div>';
+                           echo '<div class="col-sm"> <a href=delevent.php?id=' . $row["id"] . '&d=' . $params["d"] . '&m='. $params["m"] . '&y='  . $params["y"] . '>Cancel</a> </div>';
+//                        echo "<td> <a href=delevent.php?id=" . $row["id"] . "&d=" . $params['d'] . "&m=". $params['m'] . "&y="  . $params['y'] . ">Delete</a>";
+//                        echo "<td> <a href=dupevent.php?id=" . $row["id"] . "&d=" . $params['d'] . "&m=". $params['m'] . "&y="  . $params['y'] . ">Duplicate</a>";
+//                        echo "<td> <a href=chsevent.php?id=" . $row["id"] . "&d=" . $params['d'] . "&m=". $params['m'] . "&y="  . $params['y'] . ">Update</a>";
+			} else {
+				if($row["publiccontact"]) {
+					$sql = 'SELECT * from customers where name = "' . $row["customer"] . '"';
+					
+					echo '<div class="col-sm">' . $row["publiccontact"] . '</div>';
+				}
+			}
+                        echo "</div>";
+                        }
+                    }
+
+?>
+
+
+</div>
+</div>
+</div>
+</body>
+</html>
+

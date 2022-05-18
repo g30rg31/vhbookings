@@ -1,0 +1,97 @@
+<?php
+/*
+	if ($_COOKIE["Role"] != "admin") {
+		echo "not admin";
+		exit;
+	} else {
+		echo "is admin"; */
+		require('/home/web/scred.php');
+
+// Create connection
+    		$conn = new mysqli($sqlservername, $sqlusername, $sqlpassword, $sqldbname);
+
+// Check connection
+		if ($conn->connect_error) {
+		    die("Connection failed: " . $conn->connect_error);
+		} // if conn
+
+
+    /* Send an SMS using Twilio. You can run this file 3 different ways:
+     *
+     * 1. Save it as sendnotifications.php and at the command line, run
+     *         php sendnotifications.php
+     *
+     * 2. Upload it to a web host and load mywebhost.com/sendnotifications.php
+     *    in a web browser.
+     *
+     * 3. Download a local server like WAMP, MAMP or XAMPP. Point the web root
+     *    directory to the folder containing this file, and load
+     *    localhost:8888/sendnotifications.php in a web browser.
+     */
+
+    // Step 1: Get the Twilio-PHP library from twilio.com/docs/libraries/php,
+    // following the instructions to install it with Composer.
+		require_once "/home/emvhmgr/vendor/autoload.php";
+		use Twilio\Rest\Client;
+
+    // Step 2: set our AccountSid and AuthToken from https://twilio.com/console
+//		$sid = getenv("TWILIO_ACCOUNT_SID");
+//		$token = getenv("TWILIO_AUTH_TOKEN");
+
+		$sql = 'SELECT customer, bookingname FROM bookings WHERE pincode = "' . $_REQUEST["pin"] . '"';
+		echo $sql . "<br>";
+		$result = mysqli_query($conn, $sql);
+		$rowb = mysqli_fetch_assoc($result);
+
+		$sql = 'SELECT phone, email FROM customers WHERE name="' . $rowb["customer"] . '"';
+		echo $sql . "<br";
+		$result = mysqli_query($conn, $sql);
+		$rowc = mysqli_fetch_assoc($result);
+
+		$msgtext = $rowb["customer"] . ', your booking ' . $rowb["bookingname"] . ' has been confirmed. The pincode to access the Village Hall for this event is ' . $_REQUEST["pin"];
+		echo $msgtext . "<br>";
+    $sid = "AC8d6e90aca888460196bbc8fdcebe1611";
+    $token = "71036edb19446c4b1cc515af0cc9fcea";
+
+    // Step 3: instantiate a new Twilio Rest Client
+		$client = new Client($sid, $token);
+
+    // Step 4: make an array of people we know, to send them a message.
+    // Feel free to change/add your own phone number and name here.
+		$people = array(
+				'"' . $rowc["phone"] .'" => "' . $rowb["customer"] .'"'
+//        "+447802155857" => "George"
+//        "+447984580826" => "Hev",
+//        "+447785537925" => "David"
+				);
+
+    // Step 5: Loop over all our friends. $number is a phone number above, and
+    // $name is the name next to it
+		foreach ($people as $number => $name) {
+
+			$sms = $client->account->messages->create(
+
+            // the number we are sending to - Any phone number
+				$number,
+
+				array(
+                // Step 6: Change the 'From' number below to be a valid Twilio number
+                // that you've purchased
+			                'from' => "+447492884633", 
+
+                // the sms body
+			                'body' => $msgtext
+            			)
+        		);
+
+        // Display a confirmation message on the screen
+		        echo "Sent message to $name";
+
+			$sql = 'INSERT INTO messages (fromphone, tophone, name, email, textmsg) VALUES ("+447492884633",' . $rowc["phone"] . '","' . $rowc["name"] . '","' . $rowc["email"] . '","' . $msgtext . '"';
+			echo $sql . "<br>";
+//	$result = mysqli_query($conn, $sql);
+//	$rowc = mysqli_fetch_assoc($result);
+	    }  //foreach
+
+// } // else
+?>
